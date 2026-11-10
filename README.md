@@ -1,5 +1,9 @@
 # 🌙 Oneiros Dream Cycle
 
+<p align="center">
+  <img src="assets/banner.png" alt="Oneiros — Your agent sleeps on it." width="100%">
+</p>
+
 > **Your agent sleeps on it.**
 >
 > While Hermes sleeps, Oneiros sifts the day and lets the stale memories fade like old dreams.
