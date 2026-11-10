@@ -54,7 +54,7 @@ just to get this hook.
 ## Install
 
 ```bash
-hermes plugins install https://github.com/<owner>/hermes-dream-cycle --enable
+hermes plugins install https://github.com/noblebrown-69/hermes-oneiros --enable
 cp config.example.yaml "$HERMES_HOME/plugin-data/dream-cycle/config.yaml"   # optional
 ```
 
