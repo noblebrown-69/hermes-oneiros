@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oneiros</title>
+  <link rel="stylesheet" href="/dashboard/dist/style.css">
+  <style>
+    html, body { margin: 0; background: #070b14; color: #f5f7fb; }
+    #root { max-width: 1080px; margin: 0 auto; padding: 28px 22px 48px; }
+    #oneiros-harness-error {
+      color: #ffc9c9; font-family: ui-monospace, monospace; white-space: pre-wrap; padding: 12px;
+    }
+    .sdk-dialog {
+      position: fixed; inset: 0; z-index: 30;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem;
+      background: rgba(5, 8, 16, 0.72);
+    }
+    .oneiros-dialog {
+      width: min(640px, 100%);
+      max-height: calc(100dvh - 1.25rem);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #141c2e;
+      color: #f5f7fb;
+      border: 1px solid rgba(214, 226, 245, 0.28);
+      border-radius: 18px;
+      padding: 1rem 1.05rem 0.95rem;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+    }
+    .sdk-badge {
+      display: inline-flex; align-items: center;
+      border-radius: 999px; padding: 0.05rem 0.5rem;
+      border: 1px solid rgba(214, 226, 245, 0.3);
+      color: #d7e0f0; font-size: 0.75rem;
+    }
+    .sdk-toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%);
+      background: #182236; color: #f5f7fb; border: 1px solid rgba(243, 226, 182, 0.4);
+      border-radius: 999px; padding: 0.45rem 0.9rem; z-index: 40; }
+  </style>
+</head>
+<body>
+  <div id="oneiros-harness-error"></div>
+  <div id="root"></div>
+  <script src="/tests/oneiros_harness.js"></script>
+  <script src="/dashboard/dist/index.js"></script>
+  <script>
+    window.addEventListener("error", function (e) {
+      var box = document.getElementById("oneiros-harness-error");
+      box.textContent = (e.message || "error") + "\n" + (e.error && e.error.stack ? e.error.stack : "");
+    });
+    window.__oneirosMount(document.getElementById("root"));
+  </script>
+</body>
+</html>

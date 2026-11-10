@@ -1,0 +1,27 @@
+name: dream-cycle
+version: 0.8.7
+description: >
+  Oneiros Dream Cycle — Your agent sleeps on it.
+  While Hermes sleeps, Oneiros sifts the day and lets the stale memories fade
+  like old dreams. Nightly proposal-only memory consolidation: replay labeled
+  stack facts against MEMORY.md, and learn about the person from role=user
+  assertions (PERSON/EVENT/PREFERENCE/STATUS → USER.md or MEMORY.md STATUS:).
+  Honors "don't save" / off-the-record directives in role=user messages
+  (exchange or whole-session skip; status and ledger record hashes only).
+  Stage morning proposals, gated apply with snapshot, SUPERSEDED/append receipt
+  and rollback. No model calls in the core library. Footer: DREAM AT NIGHT · WAKE TO PROPOSALS · KEEP WHAT'S TRUE ·
+  A RECEIPT FOR EVERY CHANGE. Distinct from the community plugin hermes-dreaming.
+author: "@noblebrown-69"
+provides_tools:
+  - dream_cycle_propose
+  - dream_cycle_status
+  - dream_cycle_apply
+  - dream_cycle_rollback
+  - dream_cycle_receipts
+  - dream_cycle_review_status
+  - dream_cycle_snooze
+provides_hooks:
+  - pre_llm_call
+provides_commands:
+  - dream-cycle
+python_dependencies: []

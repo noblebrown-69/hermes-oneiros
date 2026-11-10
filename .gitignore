@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+plugin-data/
+
+# Oneiros dashboard ships a plain IIFE (no install-time build)
+!dashboard/dist/
+!dashboard/dist/**
+
+# Optional local scrub patterns (one extended regex per line). Not published.
+scripts/scrub-local.txt

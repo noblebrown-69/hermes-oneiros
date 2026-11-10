@@ -1,0 +1,14 @@
+{
+  "name": "dream-cycle",
+  "label": "Oneiros",
+  "description": "Oneiros \u2014 Your agent sleeps on it. While Hermes sleeps, Oneiros sifts the day and lets the stale memories fade like old dreams.",
+  "icon": "Sparkles",
+  "version": "0.8.7",
+  "tab": {
+    "path": "/oneiros",
+    "position": "after:skills"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

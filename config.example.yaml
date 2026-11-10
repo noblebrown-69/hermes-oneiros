@@ -1,0 +1,75 @@
+memory_globs:
+  - "MEMORY.md"
+  - "MISTAKES.md"
+labels:
+  - name: build
+    pattern: '\bb\d{4,6}\b'
+    proximity_words: 3
+    nearby_label_re: '(?i)\b(build|llama|cpp|driver)\b'
+  - name: throughput
+    pattern: '\b\d{1,4}(?:\.\d+)?\s*tok/s\b'
+    proximity_words: 3
+  - name: port
+    pattern: '(?<![\d.]):(\d{2,5})(?!\d)(?!\.\d)'
+    proximity_words: 3
+    nearby_label_re: '(?i)\b(port|listen|bind|endpoint|url|http|on)\b'
+    drop_if_looks_like_pid: true
+max_proposals_per_run: 10
+apply_enabled: false
+stage_subdir: dream-proposals
+disabled_filename: DISABLED
+lock_filename: dream-cycle.lock
+
+# Optional read-only session corroboration. Commands are argv lists; {date} is
+# replaced with YYYY-MM-DD (the day before the run date). A date missing from
+# the days index, or a "404 / not found" error, is a quiet day — not a failure.
+session_corroboration:
+  # state.db = read-only messages in $HERMES_HOME/state.db (recommended)
+  # command  = legacy days_command/day_command argv (e.g. memory-wiki-read)
+  enabled: false  # set true to compare MEMORY.md with recent sessions
+  source: state.db
+  lookback_days: 3
+  max_rows: 8000
+  days_command: null   # only for source: command
+  day_command: null
+  timeout_s: 30
+  # v0.6.1 — conversation-only corroboration (safe defaults ON)
+  ignore_tool_messages: true       # skip role=tool (web_search/web_extract/browser dumps)
+  ignore_compaction_messages: true # skip [CONTEXT COMPACTION] / prior-context summaries
+  require_user_evidence: true      # assistant-only citations are weaker; need a user cite
+
+# Skip memory-side multi-value proposals when each value names a different service/host
+# (e.g. chat-svc :8089 vs img-gen :8093). High-confidence names only (backticks / name:PORT).
+skip_distinct_service_conflicts: true
+
+
+# v0.7.0 — learn about the person (role=user assertions only; no model / no network)
+user_facts:
+  enabled: true
+  lookback_days: 30
+  max_rows: 8000
+  categories: [PERSON, EVENT, PREFERENCE, STATUS]
+
+# v0.8.0 — honor "don't save" / off-the-record directives in role=user messages.
+# When true (default), those exchanges (or the whole session, if the phrase is
+# in the first user message or names "this whole conversation") are skipped by
+# user-fact extraction and session corroboration. Status and the review ledger
+# record skip counts and message hashes only — never the message text.
+honor_nosave: true
+
+# Profile directory names allowed to use Oneiros. Empty (the default) means
+# every profile that has the plugin installed. Do not put machine or bot names
+# in a published copy of this file.
+profile_allowlist: []
+
+# v0.8.4 — proactive review reminder. Overdue means unreviewed for more than
+# overdue_days. Nags at most once per cooldown_hours. Snooze suppresses nags
+# only; an explicit status question still answers. Leave dashboard_base_url
+# empty until deployment sets the real dashboard origin (no credentials).
+# Schedule with Hermes cron no-agent and deliver: origin. See scripts/review-reminder.py.
+review_reminder:
+  enabled: true
+  overdue_days: 7
+  cooldown_hours: 24
+  snooze_days: 7
+  dashboard_base_url: ""
