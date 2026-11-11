@@ -1,6 +1,23 @@
-name: dream-cycle
-display_name: Oneiros Dream Cycle
-version: 0.2.0
-tagline: "Dream the day. Wake as yourself."
-category: memory
-# DRAFT — do not submit without the owner's OK
+# STALE LOCAL DRAFT — not a catalog submission.
+#
+# This file used to look like a catalog entry (name dream-cycle, version
+# 0.2.0). Those fields are gone so it cannot be mistaken for the official
+# 0.8.8 entry. Do not submit this file. Do not treat it as an install source.
+#
+# The official submitted entry is plugin-catalog/oneiros.yaml in
+# NousResearch/hermes-agent:
+#   name: oneiros
+#   version: 0.8.8
+#   sha: 02b5aa9038291cb5e2f88c3660b4fa453336bf90
+#
+# This repository publishes the Dream Cycle plugin only (plugin id
+# dream-cycle).
+
+status: stale-draft
+submit: false
+official_catalog_entry:
+  repository: NousResearch/hermes-agent
+  path: plugin-catalog/oneiros.yaml
+  name: oneiros
+  version: "0.8.8"
+  sha: 02b5aa9038291cb5e2f88c3660b4fa453336bf90
