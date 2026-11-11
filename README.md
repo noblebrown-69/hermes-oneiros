@@ -24,9 +24,8 @@ plugin id `dream-cycle`, version 0.8.8). Distinct from the community plugin
 `hermes-dreaming`.
 
 The official catalog entry is `plugin-catalog/oneiros.yaml` in
-NousResearch/hermes-agent (name `oneiros`, version 0.8.8, sha
-`02b5aa9038291cb5e2f88c3660b4fa453336bf90`). `catalog/dream-cycle.yaml` in this
-repo is a stale draft, not that entry.
+NousResearch/hermes-agent (name `oneiros`, version 0.8.8).
+`catalog/dream-cycle.yaml` in this repo is a stale draft, not that entry.
 
 ## Before / after
 
