@@ -43,13 +43,11 @@ Run it yourself (synthetic data, ~1 second): `./scripts/demo.sh`
 
 ## Session warm (optional)
 
-On Hermes builds that ship the `on_session_open` plugin hook (Nov 2026+, PR #151120;
-docs: `website/docs/user-guide/features/hooks.md`), Dream Cycle registers a callback
-that warms the status / Waking Check cache before the first CLI/TUI/Desktop turn
-(well under 5 seconds, never raises; messaging platforms do not fire the hook).
-On Hermes v0.23.0 the hook is feature-detected via `VALID_HOOKS` and skipped — the
-plugin still loads and works with no dependency on it. Do not upgrade Hermes
-just to get this hook.
+Dream Cycle registers an `on_session_open` callback that warms the status /
+Waking Check cache before the first CLI, TUI, or Desktop turn (well under 5
+seconds, never raises; messaging platforms do not fire the hook). A Hermes
+build that does not implement the hook logs a warning and still loads the
+plugin. Do not upgrade Hermes just to get this hook.
 
 ## Install
 

@@ -66,6 +66,73 @@ def profile(tmp_path, monkeypatch):
     return home
 
 
+def test_hygiene_card_reads_output_and_does_not_import_plugin(profile, monkeypatch):
+    import inspect
+    home = profile
+    plug = home / "plugins" / "memory-hygiene"
+    (plug / "hygiene").mkdir(parents=True)
+    marker = home / "IMPORTED"
+    (plug / "hygiene" / "__init__.py").write_text("")
+    (plug / "hygiene" / "config.py").write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('ran')\n"
+    )
+    pdata = home / "plugin-data" / "memory-hygiene"
+    pdata.mkdir(parents=True, exist_ok=True)
+    (pdata / "last-report.json").write_text('{"hit_count": 4, "scanned": ["MEMORY.md"]}\n')
+    mod, client = _load_api(monkeypatch, home)
+    src = inspect.getsource(mod._hygiene_card)
+    assert "sys.path.insert" not in src
+    assert "import hygiene" not in src
+    assert "find_stale" not in src
+    body = client.get("/api/plugins/dream-cycle/overview").json()
+    hyg = body["hygiene"]
+    assert hyg["installed"] is True
+    assert hyg["hit_count"] == 4
+    assert hyg["scanned"] == ["MEMORY.md"]
+    assert str(plug) not in sys.path
+    assert not marker.exists()
+    assert "hygiene" not in sys.modules
+    assert "hygiene.config" not in sys.modules
+
+
+def test_hygiene_card_reads_cron_markdown(profile, monkeypatch):
+    home = profile
+    (home / "plugins" / "memory-hygiene").mkdir(parents=True)
+    job = home / "cron" / "output" / "nightly"
+    job.mkdir(parents=True)
+    (job / "2026-11-11.md").write_text(
+        "Memory Hygiene\n\n{\"hit_count\": 3, \"scanned\": [\"USER.md\"]}\n"
+    )
+    _mod, client = _load_api(monkeypatch, home)
+    hyg = client.get("/api/plugins/dream-cycle/overview").json()["hygiene"]
+    assert hyg["hit_count"] == 3
+    assert hyg["scanned"] == ["USER.md"]
+    assert hyg["source"].endswith("2026-11-11.md")
+
+
+def test_hygiene_card_newer_report_wins_over_older_cron(profile, monkeypatch):
+    import os
+    import time
+    home = profile
+    (home / "plugins" / "memory-hygiene").mkdir(parents=True)
+    job = home / "cron" / "output" / "nightly"
+    job.mkdir(parents=True)
+    cron = job / "old.md"
+    cron.write_text("Memory Hygiene\n{\"hit_count\": 1, \"scanned\": []}\n")
+    pdata = home / "plugin-data" / "memory-hygiene"
+    pdata.mkdir(parents=True)
+    report = pdata / "last-report.json"
+    report.write_text('{"hit_count": 9, "scanned": ["MEMORY.md"]}\n')
+    now = time.time()
+    os.utime(cron, (now - 50, now - 50))
+    os.utime(report, (now, now))
+    _mod, client = _load_api(monkeypatch, home)
+    hyg = client.get("/api/plugins/dream-cycle/overview").json()["hygiene"]
+    assert hyg["hit_count"] == 9
+    assert hyg["source"].endswith("last-report.json")
+
+
 def test_overview_not_installed(tmp_path, monkeypatch):
     root = tmp_path / "hermes"
     home = root / "profiles" / "stark"

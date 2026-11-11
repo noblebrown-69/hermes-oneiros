@@ -131,15 +131,6 @@ def _register_review_prompt(ctx) -> None:
         pass
 
 
-def _hook_supported(name: str) -> bool:
-    """True when this Hermes process lists ``name`` in ``VALID_HOOKS``."""
-    try:
-        from hermes_cli.plugins import VALID_HOOKS
-        return name in VALID_HOOKS
-    except Exception:
-        return False
-
-
 def _make_pre_llm_call():
     """Inject a due reminder into this private turn. Never raises, never pushes."""
 
@@ -160,19 +151,6 @@ def _make_pre_llm_call():
             return None
 
     return pre_llm_call
-
-
-def _on_session_open_supported() -> bool:
-    """True when this Hermes build knows ``on_session_open`` (PR #151120+).
-
-    Hermes v0.23.0 does not list the hook in ``VALID_HOOKS`` —
-    feature-detect returns False and register is a no-op. Never import-raises.
-    """
-    try:
-        from hermes_cli.plugins import VALID_HOOKS
-        return "on_session_open" in VALID_HOOKS
-    except Exception:
-        return False
 
 
 def _make_on_session_open():
@@ -219,21 +197,20 @@ def register(ctx) -> None:
                                  description="Stage nightly memory consolidation proposals.")
     except Exception:  # pragma: no cover - older Hermes without CLI plugins
         pass
-    # Optional: warm status/Waking Check caches before the first turn (Hermes
-    # builds that ship on_session_open). Feature-detect so Hermes v0.23.0 is a no-op.
-    if _on_session_open_supported():
-        try:
-            ctx.register_hook("on_session_open", _make_on_session_open())
-        except Exception:
-            pass
+    # Warm status/Waking Check caches before the first turn when the host
+    # runs this hook. Messaging platforms do not fire it. An unknown hook
+    # name only logs a warning in Hermes, so register unconditionally.
+    try:
+        ctx.register_hook("on_session_open", _make_on_session_open())
+    except Exception:
+        pass
     # Next private turn (CLI, Desktop, dashboard, API, or an explicit DM).
-    # Not a background push. Hermes v0.23.0 lists this hook; cron origin
-    # delivery does not reach api_server / Desktop chats.
-    if _hook_supported("pre_llm_call"):
-        try:
-            ctx.register_hook("pre_llm_call", _make_pre_llm_call())
-        except Exception:
-            pass
+    # Not a background push. Cron origin delivery does not reach api_server
+    # / Desktop chats. Unknown hook names log a warning and do not abort.
+    try:
+        ctx.register_hook("pre_llm_call", _make_pre_llm_call())
+    except Exception:
+        pass
     _register_review_prompt(ctx)
     skill = _PLUGIN_DIR / "skills" / "dream-cycle" / "SKILL.md"
     if skill.is_file():

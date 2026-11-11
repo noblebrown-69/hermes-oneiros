@@ -1,4 +1,4 @@
-"""on_session_open warm-cache hook — feature-detect, never raises (v0.6.0)."""
+"""on_session_open warm-cache hook — always registered, never raises."""
 from __future__ import annotations
 
 import json
@@ -79,32 +79,21 @@ def test_on_session_open_callback_signature_and_never_raises(tmp_path, monkeypat
     cb()  # empty kwargs ok
 
 
-def test_register_feature_detects_missing_hook(monkeypatch):
+def test_register_hooks_unconditionally():
     ctx = FakeCtx()
-    monkeypatch.setattr(plugin, "_on_session_open_supported", lambda: False)
-    plugin.register(ctx)
-    assert "on_session_open" not in ctx.hooks
-    assert "dream_cycle_status" in ctx.tools  # rest of plugin still works
-
-
-def test_register_adds_hook_when_supported(monkeypatch):
-    ctx = FakeCtx()
-    monkeypatch.setattr(plugin, "_on_session_open_supported", lambda: True)
     plugin.register(ctx)
     assert "on_session_open" in ctx.hooks
-    # Invoke registered callback — must not raise
+    assert "pre_llm_call" in ctx.hooks
+    assert "dream_cycle_status" in ctx.tools
     ctx.hooks["on_session_open"](session_id="z", platform="acp", reason="create")
 
 
-def test_on_session_open_supported_false_without_hermes(monkeypatch):
-    # Import failure / missing VALID_HOOKS → False (safe on older hosts)
-    import builtins
-    real_import = builtins.__import__
+def test_register_survives_rejected_hook():
+    class Boom(FakeCtx):
+        def register_hook(self, name, cb, **kw):
+            raise RuntimeError("unknown hook")
 
-    def boom(name, *a, **kw):
-        if name == "hermes_cli.plugins" or name.startswith("hermes_cli"):
-            raise ImportError("no hermes")
-        return real_import(name, *a, **kw)
-
-    monkeypatch.setattr(builtins, "__import__", boom)
-    assert plugin._on_session_open_supported() is False
+    ctx = Boom()
+    plugin.register(ctx)
+    assert "dream_cycle_status" in ctx.tools
+    assert ctx.hooks == {}

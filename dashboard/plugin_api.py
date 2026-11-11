@@ -100,8 +100,9 @@ def _actor(user: Optional[str] = None) -> str:
 
 def _version() -> str:
     try:
-        import yaml
-        return str(yaml.safe_load((_PLUGIN_ROOT / "plugin.yaml").read_text()).get("version") or "0.5.0")
+        from dream_cycle.yaml_load import safe_load
+        data = safe_load((_PLUGIN_ROOT / "plugin.yaml").read_text()) or {}
+        return str(data.get("version") or "0.5.0")
     except Exception:
         return "0.5.0"
 
@@ -124,16 +125,72 @@ def _summary(stage: Path) -> Dict[str, Any]:
         return {"proposals": [], "error": "unreadable summary.json"}
 
 
+def _hygiene_markdown(text: str) -> Optional[tuple]:
+    """Cron output that looks like a hygiene run. None when it is some other job."""
+    if "Memory Hygiene" not in text and "memory-hygiene" not in text and "hit_count" not in text:
+        return None
+    hit_count, scanned = None, []
+    brace = text.find("{")
+    if brace >= 0:
+        try:
+            blob = json.loads(text[brace:text.rfind("}") + 1])
+        except ValueError:
+            blob = None
+        if isinstance(blob, dict):
+            hit_count = blob.get("hit_count")
+            scanned = blob.get("scanned") or []
+            if not isinstance(scanned, list):
+                scanned = []
+    return hit_count, scanned
+
+
+def _hygiene_json(text: str) -> tuple:
+    try:
+        blob = json.loads(text)
+    except ValueError:
+        return None, []
+    if not isinstance(blob, dict):
+        return None, []
+    hit = blob.get("hit_count", blob.get("hits", blob.get("count")))
+    scanned = blob.get("scanned") or []
+    if not isinstance(scanned, list):
+        scanned = []
+    return hit, scanned
+
+
+def _hygiene_report_files(pdata: Path) -> List[Path]:
+    """Output files written by memory-hygiene. Never its source tree."""
+    if not pdata.is_dir():
+        return []
+    found: List[Path] = []
+    for name in ("last-report.json", "waking-check.json", "status.json"):
+        cand = pdata / name
+        if cand.is_file():
+            found.append(cand)
+    named = {p.resolve() for p in found}
+    reports = [p for p in pdata.glob("**/report*.json") if p.is_file() and p.resolve() not in named]
+    if reports:
+        reports.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        found.append(reports[0])
+    return found
+
+
 def _hygiene_card(home: Path) -> Dict[str, Any]:
+    """Read memory-hygiene output files only.
+
+    The other plugin's modules stay unloaded, including when that plugin is
+    disabled. Putting its directory on ``sys.path`` imported ``hygiene.*``
+    into this process. Same idea as the cron-output read: open the files it
+    already wrote.
+    """
     out: Dict[str, Any] = {"installed": False, "hit_count": None, "scanned": [], "last_run": None, "source": None}
     plug = home / "plugins" / "memory-hygiene"
     pdata = home / "plugin-data" / "memory-hygiene"
     out["installed"] = plug.is_dir() or pdata.is_dir()
     if not out["installed"]:
         return out
-    # Prefer latest cron output for the hygiene nightly
+    best = None  # (mtime, path, hit_count, scanned)
     cron_out = home / "cron" / "output"
-    latest = None
     if cron_out.is_dir():
         for job_dir in cron_out.iterdir():
             if not job_dir.is_dir():
@@ -141,44 +198,29 @@ def _hygiene_card(home: Path) -> Dict[str, Any]:
             for f in sorted(job_dir.glob("*.md"), reverse=True)[:3]:
                 try:
                     text = f.read_text(errors="ignore")
+                    parsed = _hygiene_markdown(text)
+                    mtime = f.stat().st_mtime
                 except OSError:
                     continue
-                if "Memory Hygiene" in text or "memory-hygiene" in text or "hit_count" in text:
-                    if latest is None or f.stat().st_mtime > latest[0]:
-                        latest = (f.stat().st_mtime, f, text)
-    if latest:
-        _mt, f, text = latest
-        out["last_run"] = datetime.fromtimestamp(_mt).astimezone().isoformat(timespec="seconds")
-        out["source"] = str(f)
-        # parse JSON blob if present
-        brace = text.find("{")
-        if brace >= 0:
-            try:
-                blob = json.loads(text[brace:text.rfind("}") + 1])
-                out["hit_count"] = blob.get("hit_count")
-                out["scanned"] = blob.get("scanned") or []
-            except ValueError:
-                pass
-    # Live scan when possible (read-only)
-    if plug.is_dir():
+                if parsed is None:
+                    continue
+                if best is None or mtime > best[0]:
+                    best = (mtime, f, parsed[0], parsed[1])
+    for report in _hygiene_report_files(pdata):
         try:
-            if str(plug) not in sys.path:
-                sys.path.insert(0, str(plug))
-            from hygiene.config import load_config as load_hyg
-            from hygiene.paths import resolve_memory_files
-            from hygiene.values import find_stale
-            hcfg = load_hyg(pdata / "config.yaml") if (pdata / "config.yaml").is_file() else load_hyg()
-            roots = [home / "memories", home]
-            files = resolve_memory_files(roots, hcfg.get("memory_globs") or ["MEMORY.md", "SOUL.md", "USER.md"],
-                                         shallow_roots=[home])
-            hits = []
-            for fp in files:
-                hits.extend(find_stale(fp.read_text(errors="replace"), str(fp)))
-            out["hit_count"] = len(hits)
-            out["scanned"] = [str(x) for x in files]
-            out["source"] = out["source"] or "live-scan"
-        except Exception as e:
-            out["scan_error"] = e.__class__.__name__
+            text = report.read_text(errors="ignore")
+            mtime = report.stat().st_mtime
+        except OSError:
+            continue
+        hit, scanned = _hygiene_json(text)
+        if best is None or mtime > best[0]:
+            best = (mtime, report, hit, scanned)
+    if best:
+        mtime, src, hit, scanned = best
+        out["last_run"] = datetime.fromtimestamp(mtime).astimezone().isoformat(timespec="seconds")
+        out["source"] = str(src)
+        out["hit_count"] = hit
+        out["scanned"] = scanned
     return out
 
 

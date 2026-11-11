@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from .config import default_config, validate_config
-from .paths import data_root
+from .paths import data_root, lock_exclusive, unlock
 from .review import latest_decisions_across
 
 STATE_NAME = "review-reminder.json"
@@ -145,18 +145,20 @@ def _save_state(home: Path, state: Dict[str, Any]) -> None:
 
 
 def _lock(home: Path):
-    import fcntl
     path = data_root(home) / "review-reminder.lock"
     path.parent.mkdir(parents=True, exist_ok=True)
     fh = open(path, "a+", encoding="utf-8")
-    fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+    try:
+        lock_exclusive(fh.fileno(), nonblocking=False)
+    except Exception:
+        fh.close()
+        raise
     return fh
 
 
 def _unlock(fh) -> None:
-    import fcntl
     try:
-        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        unlock(fh.fileno())
     finally:
         fh.close()
 

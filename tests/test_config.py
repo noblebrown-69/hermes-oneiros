@@ -113,6 +113,35 @@ def test_yaml_fleet_session_corroboration_no_day_command(tmp_path):
     assert c["session_corroboration"]["day_command"] is None
 
 
+def test_load_config_uses_hermes_yaml(tmp_path, monkeypatch):
+    """The host parser is hermes_yaml.safe_load, not PyYAML."""
+    import sys
+    import types
+    seen = {}
+    mod = types.ModuleType("hermes_yaml")
+
+    class YAMLError(Exception):
+        pass
+
+    def safe_load(text):
+        seen["text"] = text
+        return {"max_proposals_per_run": 4}
+
+    mod.safe_load = safe_load
+    mod.YAMLError = YAMLError
+    monkeypatch.setitem(sys.modules, "hermes_yaml", mod)
+    p = tmp_path / "c.yaml"
+    p.write_text("max_proposals_per_run: 9\n")
+    assert load_config(p)["max_proposals_per_run"] == 4
+    assert seen["text"] == "max_proposals_per_run: 9\n"
+
+
+def test_yaml_bool_yes(tmp_path):
+    p = tmp_path / "c.yaml"
+    p.write_text("apply_enabled: yes\n")
+    assert load_config(p)["apply_enabled"] is True
+
+
 def test_load_config_accepts_str_path(tmp_path):
     p = tmp_path / "c.yaml"
     p.write_text("max_proposals_per_run: 7\n")
