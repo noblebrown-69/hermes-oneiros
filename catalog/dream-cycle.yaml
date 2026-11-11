@@ -8,7 +8,6 @@
 # NousResearch/hermes-agent:
 #   name: oneiros
 #   version: 0.8.8
-#   sha: 02b5aa9038291cb5e2f88c3660b4fa453336bf90
 #
 # This repository publishes the Dream Cycle plugin only (plugin id
 # dream-cycle).
@@ -20,4 +19,3 @@ official_catalog_entry:
   path: plugin-catalog/oneiros.yaml
   name: oneiros
   version: "0.8.8"
-  sha: 02b5aa9038291cb5e2f88c3660b4fa453336bf90
