@@ -19,8 +19,14 @@ morning review.
 It never rewrites memory. It never calls a model. It's a deterministic regex
 pass with a lock, a kill switch, and a dated paper trail.
 
-Part of the **Oneiros** suite: Dream Cycle → [Waking Check](../hermes-memory-hygiene)
-→ Waking Self → Continuity Vault. Distinct from the community plugin `hermes-dreaming`.
+This repository is the Oneiros Dream Cycle plugin only (catalog name `oneiros`,
+plugin id `dream-cycle`, version 0.8.8). Distinct from the community plugin
+`hermes-dreaming`.
+
+The official catalog entry is `plugin-catalog/oneiros.yaml` in
+NousResearch/hermes-agent (name `oneiros`, version 0.8.8, sha
+`02b5aa9038291cb5e2f88c3660b4fa453336bf90`). `catalog/dream-cycle.yaml` in this
+repo is a stale draft, not that entry.
 
 ## Before / after
 
@@ -43,11 +49,11 @@ Run it yourself (synthetic data, ~1 second): `./scripts/demo.sh`
 
 ## Session warm (optional)
 
-Dream Cycle registers an `on_session_open` callback that warms the status /
-Waking Check cache before the first CLI, TUI, or Desktop turn (well under 5
-seconds, never raises; messaging platforms do not fire the hook). A Hermes
-build that does not implement the hook logs a warning and still loads the
-plugin. Do not upgrade Hermes just to get this hook.
+Dream Cycle registers an `on_session_open` callback that warms the status
+cache before the first CLI, TUI, or Desktop turn (well under 5 seconds, never
+raises; messaging platforms do not fire the hook). A Hermes build that does
+not implement the hook logs a warning and still loads the plugin. Do not
+upgrade Hermes just to get this hook.
 
 ## Install
 
@@ -65,7 +71,9 @@ cp config.example.yaml "$HERMES_HOME/plugin-data/dream-cycle/config.yaml"   # op
 | Tool | `dream_cycle_apply` | Gated apply of one reviewed proposal (or all ledger `accept` rows with `keep`) |
 | Tool | `dream_cycle_rollback` | Restore from the pre-apply snapshot (`--last` or `--receipt ID`) |
 | Tool | `dream_cycle_receipts` | List apply receipts with before/after sha256 |
-| Slash | `/dream-cycle propose [YYYY-MM-DD] \| status` | Same, in-session |
+| Tool | `dream_cycle_review_status` | Live pending-review and accepted-not-applied counts |
+| Tool | `dream_cycle_snooze` | Pause review reminders for `snooze_days` (default 7) |
+| Slash | `/dream-cycle propose [YYYY-MM-DD] \| status \| snooze` | Propose, status, or pause reminders, in-session |
 | CLI | `hermes dream-cycle propose --date … \| status` | Same, for cron / shell |
 | Skill | `dream-cycle` | How to run the morning review |
 
@@ -137,7 +145,7 @@ pass still runs.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest pyyaml
-.venv/bin/pytest -q          # synthetic fixtures only
+.venv/bin/pytest -q          # synthetic fixtures only; PyYAML stands in for hermes_yaml
 ./scripts/scrub-check.sh     # generic secret patterns; optional scripts/scrub-local.txt
 ./scripts/demo.sh
 ```
@@ -155,11 +163,11 @@ Two tiers, marked by the **first token** of a memory line (an optional leading `
 
 **Job-relative placement:** write the line under the heading of the job, routine, or service it describes (for example under `## Dream Cycle 06:30` or `## llama-server`), not in a global catch-all section. The tier tells a reader how much to trust it; the placement tells them what it belongs to.
 
-Scanners (Waking Check consolidate, Dream Cycle propose) **recognize** these lines: they list their locations under `tier_markers` in the stage manifest/summary and **do not mine them for values** (no guessing free text on tier lines). They are **not** Proposal or receipt fields yet — that promotion waits on a two-profile proof week.
+Dream Cycle propose **recognizes** these lines: it lists their locations under `tier_markers` in the stage manifest/summary and **does not mine them for values** (no guessing free text on tier lines). They are **not** Proposal or receipt fields yet — that promotion waits on a two-profile proof week.
 
 ### Optional speaker on proposals
 
-Lines that start with `ATTR Name@Venue ...` produce proposals with optional `speaker` (and on Waking Check, `attr`). Old manifests without these keys still load.
+Lines that start with `ATTR Name@Venue ...` produce proposals with optional `speaker`. Old manifests without these keys still load.
 
 ### ISO dates are not values
 
@@ -180,15 +188,7 @@ python -m dream_cycle.review append <stage-dir> <proposal_id> defer reviewer --e
 python -m dream_cycle.review list <stage-dir>
 ```
 
-Waking Self lists undecided proposal ids in its Overnight block.
-
-
 ### Dashboard (v0.8.3)
-
-The Oneiros tab reviews whichever profile the dashboard has open. Leave
-`profile_allowlist` empty (the default) and every profile with the plugin
-installed is in scope. Set it to a list of profile directory names to limit
-the tab. A profile that is not installed gets a generic install message.
 
 The Oneiros tab on the Hermes dashboard reviews staged proposals. **Accept**
 (and **Accept all**) write `review.jsonl` only — they do not change bot
@@ -230,6 +230,54 @@ is not a push target. Do not schedule that script against Desktop or API
 chats. Empty stdout stays silent, and the script records an emit time rather
 than a delivery receipt.
 
+### Manifest tools (v0.8.5)
+
+`provides_tools` lists `dream_cycle_review_status` and `dream_cycle_snooze`
+with the five older tools, and `provides_hooks` lists `pre_llm_call`. Hosts
+that catalog or validate from the manifest were only advertising the older
+five.
+
+The reminder is the next private owner turn via `pre_llm_call`, not a
+background push. Nothing is sent while the user is idle. Groups, channels,
+threads, and messaging chats with no DM type are skipped, and a skip does not
+consume the 24 hour cap. `scripts/review-reminder.py` stays the optional cron
+path only when that transport really has an origin chat. It is not the path
+for Desktop or API.
+
+### Apply a whole file (v0.8.6)
+
+**Apply accepted** can apply a whole file in one click. A night of accepts
+that share `MEMORY.md` or `USER.md` used to land one receipt and refuse the
+rest: the first write changed the hash and shifted line numbers, so the
+sibling lines looked stale. Sibling lines in the same click are remapped. A cited
+line whose text actually changed, and any edit from outside this batch, is
+still refused. `apply-refused` ledger rows include a non-empty `reason` (the
+same text as `evidence`). Roll receipts back from newest to oldest to restore
+a file that took several writes. `apply_enabled`, the kill switch, the sha
+re-check, same-line conflicts, secret scan, snapshots, and rollback are
+unchanged.
+
+### Configurable profiles and public scrub (v0.8.7)
+
+`profile_allowlist` replaces the built-in list of profile names. Leave it
+empty (the default) and every profile with the plugin installed is in scope.
+A non-empty list limits the tab to those directory names. A profile without
+the plugin gets a generic install message.
+
+`scripts/scrub-check.sh` checks generic secret and home-path patterns only.
+Extra name patterns belong in gitignored `scripts/scrub-local.txt` (one
+extended regex per line). The published script does not list them.
+
+### Host YAML, locks, and hooks (v0.8.8)
+
+Config, Hermes char limits, and the dashboard version read go through
+`hermes_yaml.safe_load`. Hermes does not ship PyYAML, so copying in
+`config.yaml` no longer raises ImportError on the next tool call.
+`python_dependencies` stays empty. This plugin does not import other plugins.
+File locks use `fcntl.flock` where that module exists. Where it does not,
+they use `msvcrt.locking` on one byte at the start of the same lock file.
+`pre_llm_call` and `on_session_open` register unconditionally. A host that
+does not know a hook logs a warning and still loads the plugin.
 
 ### Session cost evidence
 
