@@ -109,8 +109,8 @@ def _char_limit(home: Path, cfg: Dict[str, Any], target: Path) -> Optional[int]:
     if target.name.lower() not in ("memory.md", "user.md"):
         return None
     try:
-        import yaml
-        mem = (yaml.safe_load((home / "config.yaml").read_text()) or {}).get("memory") or {}
+        from .yaml_load import safe_load
+        mem = (safe_load((home / "config.yaml").read_text()) or {}).get("memory") or {}
     except Exception:
         return None
     key = "memory_char_limit" if target.name.lower() == "memory.md" else "user_char_limit"

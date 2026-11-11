@@ -1,4 +1,4 @@
-/* Oneiros Dream Cycle dashboard — plain IIFE, React from SDK. v0.8.7 */
+/* Oneiros Dream Cycle dashboard — plain IIFE, React from SDK. v0.8.8 */
 (function () {
   "use strict";
   var SDK = window.__HERMES_PLUGIN_SDK__;

@@ -232,11 +232,11 @@ def load_config(path: Path | str | None = None) -> Dict[str, Any]:
     if path is not None:
         path = Path(path)
     if path and path.exists():
-        import yaml
+        from .yaml_load import YamlReadError, safe_load
         try:
-            data = yaml.safe_load(path.read_text()) or {}
-        except yaml.YAMLError as e:
-            raise ConfigError(f"{path}: not valid YAML ({e.__class__.__name__})") from None
+            data = safe_load(path.read_text()) or {}
+        except YamlReadError as e:
+            raise ConfigError(f"{path}: not valid YAML ({e})") from None
         if not isinstance(data, dict):
             raise ConfigError(f"{path}: top level must be a mapping")
         cs = data.pop("session_costs", None)

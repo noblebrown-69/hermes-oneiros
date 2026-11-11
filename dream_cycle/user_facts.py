@@ -1151,8 +1151,8 @@ def char_limits_from_home(hermes_home: Path, cfg: Dict[str, Any]) -> Dict[str, O
     hc = Path(hermes_home) / "config.yaml"
     if hc.is_file():
         try:
-            import yaml
-            data = yaml.safe_load(hc.read_text()) or {}
+            from .yaml_load import safe_load
+            data = safe_load(hc.read_text()) or {}
             mem = (data.get("memory") or {}) if isinstance(data, dict) else {}
             if mem_lim is None and mem.get("memory_char_limit") is not None:
                 mem_lim = int(mem["memory_char_limit"])

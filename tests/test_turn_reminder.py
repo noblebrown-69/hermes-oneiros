@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
+from hermes_yaml import safe_load
 
 from dream_cycle.remind import review_snapshot
 from test_plugin import _load
@@ -71,8 +71,6 @@ def _stage(home: Path):
 
 def _register(monkeypatch):
     plugin = _load()
-    monkeypatch.setattr(plugin, "_hook_supported", lambda name: name == "pre_llm_call")
-    monkeypatch.setattr(plugin, "_on_session_open_supported", lambda: False)
     ctx = HermesCtx()
     plugin.register(ctx)
     return plugin, ctx
@@ -80,13 +78,14 @@ def _register(monkeypatch):
 
 def test_manifest_lists_registered_tools_and_prompt(monkeypatch):
     plugin, ctx = _register(monkeypatch)
-    manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text())
+    manifest = safe_load((ROOT / "plugin.yaml").read_text())
     assert set(manifest["provides_tools"]) == set(ctx.tools)
     assert "dream_cycle_review_status" in ctx.tools
     assert "dream_cycle_snooze" in ctx.tools
-    assert manifest["provides_hooks"] == ["pre_llm_call"]
-    assert "pre_llm_call" in ctx.hooks
-    assert "on_session_open" not in ctx.hooks
+    assert manifest["provides_hooks"] == ["pre_llm_call", "on_session_open"]
+    assert set(manifest["provides_hooks"]) == set(ctx.hooks)
+    assert manifest.get("python_dependencies") in ([], None)
+    assert manifest["version"] == "0.8.8"
     prompt = ctx.prompts["dream-cycle.review"]
     assert "dream_cycle_review_status" in prompt
     assert "dream_cycle_snooze" in prompt
@@ -96,17 +95,23 @@ def test_manifest_lists_registered_tools_and_prompt(monkeypatch):
     assert ctx.tools["dream_cycle_snooze"]["schema"]["name"] == "dream_cycle_snooze"
 
 
-def test_hook_supported_follows_valid_hooks(monkeypatch):
-    import sys
-    import types
+def test_register_hooks_without_importing_hermes(monkeypatch):
+    """Unknown hooks are registered anyway. Hermes logs a warning; we do not probe it."""
+    import builtins
     plugin = _load()
-    pkg = types.ModuleType("hermes_cli")
-    mod = types.ModuleType("hermes_cli.plugins")
-    mod.VALID_HOOKS = {"pre_llm_call", "pre_tool_call", "post_llm_call"}
-    monkeypatch.setitem(sys.modules, "hermes_cli", pkg)
-    monkeypatch.setitem(sys.modules, "hermes_cli.plugins", mod)
-    assert plugin._hook_supported("pre_llm_call") is True
-    assert plugin._hook_supported("on_session_open") is False
+    real_import = builtins.__import__
+
+    def boom(name, *a, **kw):
+        if name == "hermes_cli.plugins" or (isinstance(name, str) and name.startswith("hermes_cli")):
+            raise ImportError("no hermes")
+        return real_import(name, *a, **kw)
+
+    monkeypatch.setattr(builtins, "__import__", boom)
+    ctx = HermesCtx()
+    plugin.register(ctx)
+    assert "pre_llm_call" in ctx.hooks
+    assert "on_session_open" in ctx.hooks
+    assert "VALID_HOOKS" not in Path(plugin.__file__).read_text()
 
 
 def test_pre_llm_call_only_private_owner_turns(home, monkeypatch):

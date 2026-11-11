@@ -3,7 +3,7 @@
   "label": "Oneiros",
   "description": "Oneiros \u2014 Your agent sleeps on it. While Hermes sleeps, Oneiros sifts the day and lets the stale memories fade like old dreams.",
   "icon": "Sparkles",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "tab": {
     "path": "/oneiros",
     "position": "after:skills"
